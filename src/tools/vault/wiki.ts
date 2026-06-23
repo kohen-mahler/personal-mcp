@@ -53,10 +53,7 @@ export function registerWikiTools(server: McpServer) {
     async ({ path }) => {
       const result = await listVaultDir(wiki.rootPath, path);
       if (!result.ok) return { isError: true, ...toText(result.error) };
-      const lines = result.entries.map(
-        (e) => `${e.type === "directory" ? "[dir] " : "[file]"} ${e.name}`
-      );
-      return toText(lines.join("\n"));
+      return toText(JSON.stringify(result.entries, null, 2));
     }
   );
 }

@@ -1,8 +1,8 @@
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import config from "../../config/kohen.config.ts";
-import { readVaultFile } from "./read.ts";
-import { listVaultDir } from "./list.ts";
+import config from "../../config/kohen.config";
+import { readVaultFile } from "./read";
+import { listVaultDir } from "./list";
 
 const vault = config.vaults.find((v) => v.name === "vault")!;
 
@@ -54,10 +54,7 @@ export function registerVaultTools(server: McpServer) {
     async ({ path }) => {
       const result = await listVaultDir(vault.rootPath, path);
       if (!result.ok) return { isError: true, ...toText(result.error) };
-      const lines = result.entries.map(
-        (e) => `${e.type === "directory" ? "[dir] " : "[file]"} ${e.name}`
-      );
-      return toText(lines.join("\n"));
+      return toText(JSON.stringify(result.entries, null, 2));
     }
   );
 }

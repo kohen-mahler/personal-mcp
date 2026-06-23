@@ -1,5 +1,5 @@
 import { join, resolve } from "node:path";
-import { readdir } from "node:fs/promises";
+import { readdir, stat } from "node:fs/promises";
 
 export type ListEntry = { name: string; type: "file" | "directory" };
 
@@ -18,18 +18,22 @@ export async function listVaultDir(
     return { ok: false, error: "Path traversal not allowed" };
   }
 
-  try {
-    const entries = await readdir(target, { withFileTypes: true });
-    return {
-      ok: true,
-      entries: entries
-        .filter((e) => !e.name.startsWith("."))
-        .map((e) => ({
-          name: e.name,
-          type: e.isDirectory() ? "directory" : "file",
-        })),
-    };
-  } catch {
-    return { ok: false, error: `Directory not found: ${dirPath || "/"}` };
+  const info = await stat(target).catch(() => null);
+  if (!info) {
+    return { ok: false, error: `Not found: ${dirPath || "/"}` };
   }
+  if (!info.isDirectory()) {
+    return { ok: false, error: `Path is a file, not a directory — use vault_read instead: ${dirPath}` };
+  }
+
+  const entries = await readdir(target, { withFileTypes: true });
+  return {
+    ok: true,
+    entries: entries
+      .filter((e) => !e.name.startsWith("."))
+      .map((e) => ({
+        name: e.name,
+        type: e.isDirectory() ? "directory" : "file",
+      })),
+  };
 }

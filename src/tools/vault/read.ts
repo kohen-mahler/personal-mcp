@@ -1,17 +1,46 @@
 import { join, resolve } from "node:path";
 import { parse as parseYaml } from "yaml";
 
+export type VaultLink = {
+  target: string;
+  type: "file" | "folder" | "link";
+  heading?: string;
+  alias?: string;
+};
+
 export type VaultFileData = {
+  path: string;
   content: string;
   frontmatter: Record<string, unknown>;
   tags: string[];
+  links: VaultLink[];
 };
 
 export type ReadResult =
   | { ok: true; data: VaultFileData }
   | { ok: false; error: string };
 
-function parseFrontmatter(raw: string): {
+// Local attachments to skip — images, video, audio, binary files
+const LOCAL_MEDIA_EXTENSIONS = new Set([
+  "png", "jpg", "jpeg", "gif", "svg", "webp",
+  "mp4", "mov", "mp3", "wav", "pdf",
+]);
+
+// External URLs — only skip actual images, not documents (PDFs, papers are useful)
+const EXTERNAL_IMAGE_EXTENSIONS = new Set([
+  "png", "jpg", "jpeg", "gif", "svg", "webp",
+]);
+
+export function isFilteredPath(destination: string): boolean {
+  const ext = destination.split(".").pop()?.split("?")[0].toLowerCase() ?? "";
+  const isExternal =
+    destination.startsWith("http://") || destination.startsWith("https://");
+  return isExternal
+    ? EXTERNAL_IMAGE_EXTENSIONS.has(ext)
+    : LOCAL_MEDIA_EXTENSIONS.has(ext);
+}
+
+export function parseFrontmatter(raw: string): {
   frontmatter: Record<string, unknown>;
   body: string;
 } {
@@ -38,7 +67,7 @@ function parseFrontmatter(raw: string): {
   }
 }
 
-function extractTags(frontmatter: Record<string, unknown>, body: string): string[] {
+export function extractTags(frontmatter: Record<string, unknown>, body: string): string[] {
   const fmTags: string[] = [];
 
   const raw = frontmatter.tags;
@@ -55,12 +84,67 @@ function extractTags(frontmatter: Record<string, unknown>, body: string): string
   return [...new Set([...fmTags, ...inlineTags])];
 }
 
+export function extractLinks(content: string): VaultLink[] {
+  const seen = new Set<string>();
+  const links: VaultLink[] = [];
+
+  function add(link: VaultLink) {
+    const key = link.heading ? `${link.target}#${link.heading}` : link.target;
+    if (seen.has(key)) return;
+    seen.add(key);
+    links.push(link);
+  }
+
+  // Wikilinks: [[target#heading|alias]]
+  const wikilinkRegex = /\[\[([^\]|#]+?)(?:#([^\]|]+))?(?:\|([^\]]+))?\]\]/g;
+  for (const m of content.matchAll(wikilinkRegex)) {
+    const target = m[1].trim();
+    const heading = m[2]?.trim();
+    const alias = m[3]?.trim();
+    const type = target.endsWith("/") ? "folder" : "file";
+
+    if (isFilteredPath(target)) continue;
+
+    const link: VaultLink = { target, type };
+    if (heading) link.heading = heading;
+    if (alias) link.alias = alias;
+    add(link);
+  }
+
+  // Markdown links: [alias](destination) — exclude images (preceded by !)
+  const mdLinkRegex = /(?<!!)\[([^\]]*)\]\(([^)]+)\)/g;
+  for (const m of content.matchAll(mdLinkRegex)) {
+    const alias = m[1].trim();
+    const destination = m[2].trim().split(" ")[0]; // strip optional title attr
+
+    if (isFilteredPath(destination)) continue;
+
+    const isExternal =
+      destination.startsWith("http://") || destination.startsWith("https://");
+
+    const link: VaultLink = {
+      target: destination,
+      type: isExternal ? "link" : "file",
+    };
+    if (alias) link.alias = alias;
+    add(link);
+  }
+
+  return links;
+}
+
 export async function readVaultFile(
   rootPath: string,
   filePath: string
 ): Promise<ReadResult> {
   const root = resolve(rootPath);
-  const target = resolve(join(root, filePath));
+
+  // Auto-append .md if no extension provided
+  const normalizedPath =
+    filePath.includes(".") ? filePath : `${filePath}.md`;
+
+  const target = resolve(join(root, normalizedPath));
+
 
   if (!target.startsWith(root + "/") && target !== root) {
     return { ok: false, error: "Path traversal not allowed" };
@@ -68,12 +152,13 @@ export async function readVaultFile(
 
   const file = Bun.file(target);
   if (!(await file.exists())) {
-    return { ok: false, error: `File not found: ${filePath}` };
+    return { ok: false, error: `File not found: ${normalizedPath}` };
   }
 
   const raw = await file.text();
   const { frontmatter, body } = parseFrontmatter(raw);
   const tags = extractTags(frontmatter, body);
+  const links = extractLinks(raw);
 
-  return { ok: true, data: { content: raw, frontmatter, tags } };
+  return { ok: true, data: { path: normalizedPath, content: raw, frontmatter, tags, links } };
 }
