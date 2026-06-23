@@ -128,4 +128,13 @@ describe("readVaultFile — error cases", () => {
     if (result.ok) return;
     expect(result.error).toContain("ghost.md");
   });
+
+  it("returns not-found when path is a directory name — .md appended, directory is not readable as file", async () => {
+    // "Notes" is a real directory in the fixture. readVaultFile appends .md → "Notes.md"
+    // which does not exist, so it fails gracefully rather than crashing or returning directory contents.
+    const result = await readVaultFile(FIXTURE_ROOT, "Notes");
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error).toContain("Notes.md");
+  });
 });

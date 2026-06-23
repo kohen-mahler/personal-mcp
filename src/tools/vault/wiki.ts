@@ -3,14 +3,12 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import config from "../../config/kohen.config.ts";
 import { readVaultFile } from "./read.ts";
 import { listVaultDir } from "./list.ts";
-
-const wiki = config.vaults.find((v) => v.name === "wiki")!;
-
-function toText(text: string) {
-  return { content: [{ type: "text" as const, text }] };
-}
+import { toToolText, toToolError } from "./format.ts";
 
 export function registerWikiTools(server: McpServer) {
+  const wiki = config.vaults.find((v) => v.name === "wiki");
+  if (!wiki) throw new Error("kohen-mcp: 'wiki' entry missing from config — add it to kohen.config.ts");
+
   server.registerTool(
     "wiki_read",
     {
@@ -29,8 +27,8 @@ export function registerWikiTools(server: McpServer) {
     },
     async ({ path }) => {
       const result = await readVaultFile(wiki.rootPath, path);
-      if (!result.ok) return { isError: true, ...toText(result.error) };
-      return toText(JSON.stringify(result.data, null, 2));
+      if (!result.ok) return toToolError(result.error);
+      return toToolText(JSON.stringify(result.data, null, 2));
     }
   );
 
@@ -52,8 +50,8 @@ export function registerWikiTools(server: McpServer) {
     },
     async ({ path }) => {
       const result = await listVaultDir(wiki.rootPath, path);
-      if (!result.ok) return { isError: true, ...toText(result.error) };
-      return toText(JSON.stringify(result.entries, null, 2));
+      if (!result.ok) return toToolError(result.error);
+      return toToolText(JSON.stringify(result.entries, null, 2));
     }
   );
 }
