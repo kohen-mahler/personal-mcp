@@ -16,6 +16,8 @@ export interface VaultDefinition {
   rootPath: string;
   /** Shown to AI clients in tool descriptions — what this vault is for and when to use it */
   description: string;
+  /** Port of the Omnisearch HTTP server for this vault. Requires Obsidian open with Omnisearch plugin + HTTP server enabled. */
+  omnisearchPort?: number;
 }
 
 export interface UserConfig {

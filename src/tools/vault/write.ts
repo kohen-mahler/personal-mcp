@@ -1,6 +1,6 @@
 import { join, resolve, dirname } from "node:path";
 import { mkdir, rename, stat, unlink } from "node:fs/promises";
-import { applyPatch, type PatchInstruction } from "markdown-patch";
+import { applyPatch, getDocumentMap, type PatchInstruction } from "markdown-patch";
 
 export type WriteResult =
   | { ok: true; path: string; content?: string }
@@ -15,6 +15,23 @@ export type PatchParams = {
   trimTargetWhitespace?: boolean;
   targetDelimiter?: string;
 };
+
+const HEADING_SEP = "";
+
+// markdown-patch keys nested headings as "ParentChild". When the user
+// passes just a leaf name like "Appended Section", resolve it to the full path
+// if there is exactly one unambiguous match in the document map.
+function resolveHeadingPath(document: string, target: string[]): string[] {
+  const map = getDocumentMap(document);
+  const exactKey = target.join(HEADING_SEP);
+  if (map.heading[exactKey] !== undefined) return target;
+
+  const suffix = HEADING_SEP + exactKey;
+  const matches = Object.keys(map.heading).filter((k) => k.endsWith(suffix));
+  if (matches.length === 1) return matches[0].split(HEADING_SEP);
+
+  return target;
+}
 
 function checkTraversal(
   rootPath: string,
@@ -112,7 +129,10 @@ export async function patchVaultFile(
 
   if (params.targetType === "heading") {
     const delimiter = params.targetDelimiter ?? "::";
-    const headingTarget = params.target.split(delimiter).map((s) => s.trim());
+    const headingTarget = resolveHeadingPath(
+      document,
+      params.target.split(delimiter).map((s) => s.trim())
+    );
     instruction = {
       targetType: "heading",
       target: headingTarget,

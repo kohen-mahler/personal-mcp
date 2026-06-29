@@ -1,2 +1,2 @@
-export { registerVaultTools } from "./vault.ts";
-export { registerWikiTools } from "./wiki.ts";
+export { registerVaultTools } from "./vault";
+export { registerWikiTools } from "./wiki";

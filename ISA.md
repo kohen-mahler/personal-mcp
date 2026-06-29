@@ -3,7 +3,7 @@ task: "kohen-mcp v1.0 — portable agentic vault access layer"
 slug: kohen-mcp
 project: kohen-mcp
 effort: E3
-phase: verify
+phase: complete
 progress: 59/59
 mode: ALGORITHM
 started: 2026-06-21
@@ -179,8 +179,16 @@ kohen-mcp v1.0 is a locally-running MCP server that gives any connected AI tool 
 
 ## Changelog
 
-_No entries yet — populated at LEARN phase._
+- conjectured: batch `[initialize, request]` approach needed because each POST creates fresh McpServer
+- refuted_by: SDK in stateless mode (`sessionIdGenerator: undefined`) treats server as pre-initialized; any request works standalone
+- learned: stateless StreamableHTTP skips the init handshake requirement; each POST is a self-contained operation
+- criterion_now: ISC-2 / ISC-3 verified with standalone POST/GET; no batch needed
 
 ## Verification
 
-_Populated at VERIFY phase._
+- ISC-1: `GET /health` → 200 `{ok:true, version:"0.1.0"}` — `bun test tests/integration/server.test.ts` pass
+- ISC-2: `POST /mcp` → 200 SSE event containing tools/call result — `bun test` pass
+- ISC-3: `GET /mcp` → 200 `content-type: text/event-stream` — `bun test` pass
+- ISC-4: `vault_read path traversal` → `isError: true`, message contains "Path traversal" — `bun test` pass
+- ISC-5: `toToolText`/`toToolError` — unit tests pass (`tests/unit/format.test.ts`)
+- ISC-54: `bun test` exit 0, 175 pass, 0 fail, 0 todo — confirmed 2026-06-29

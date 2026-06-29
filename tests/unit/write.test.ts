@@ -232,6 +232,20 @@ describe("patchVaultFile", () => {
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.error).toContain("traversal");
   });
+
+  it("resolves nested heading by leaf name when unambiguous", async () => {
+    await writeFile(join(tmpDir, "nested.md"), "# Parent\n\nIntro.\n\n## Child\n\nOld content.\n");
+    const result = await patchVaultFile(tmpDir, "nested.md", {
+      targetType: "heading",
+      target: "Child",
+      operation: "replace",
+      content: "New content.",
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.content).toContain("New content.");
+    expect(result.content).not.toContain("Old content.");
+  });
 });
 
 // ─── deleteVaultFile ────────────────────────────────────────────────────────────

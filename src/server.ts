@@ -3,17 +3,18 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { z } from "zod";
 import config from "./config/kohen.config";
+import type { VaultDefinition } from "./config/schema";
 import { registerVaultTools, registerWikiTools } from "./tools/vault/index";
 
-const VERSION = "0.1.0";
+export const VERSION = "0.1.0";
 
-function createMcpServer(): McpServer {
+export function createMcpServer(vaultDef: VaultDefinition, wikiDef: VaultDefinition): McpServer {
   const server = new McpServer({ name: "kohen-mcp", version: VERSION });
 
   server.registerTool(
     "ping",
     {
-      description: "Health check — returns server version and current timestamp.",
+      description: "Health check. Returns server version and ISO timestamp. Call to verify the MCP server is reachable before diagnosing connection issues.",
       inputSchema: z.object({}),
     },
     async () => ({
@@ -26,8 +27,8 @@ function createMcpServer(): McpServer {
     })
   );
 
-  registerVaultTools(server);
-  registerWikiTools(server);
+  registerVaultTools(server, vaultDef);
+  registerWikiTools(server, wikiDef);
 
   return server;
 }
@@ -42,43 +43,50 @@ function sendJSON(res: ServerResponse, status: number, body: unknown): void {
   res.end(data);
 }
 
-const httpServer = createServer(async (req: IncomingMessage, res: ServerResponse) => {
-  try {
-    const isMcp = req.url === "/mcp";
+export function createHttpHandler(vaultDef: VaultDefinition, wikiDef: VaultDefinition) {
+  return async function handler(req: IncomingMessage, res: ServerResponse): Promise<void> {
+    try {
+      const isMcp = req.url === "/mcp";
 
-    if (isMcp && (req.method === "POST" || req.method === "GET")) {
-      try {
-        const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
-        const mcpServer = createMcpServer();
-        await mcpServer.connect(transport);
-        await transport.handleRequest(req, res);
-      } catch (err) {
-        const message = err instanceof Error ? err.message : "Unknown internal error";
-        logError({ errorType: "mcp_handler", message });
-        sendJSON(res, 200, {
-          jsonrpc: "2.0",
-          id: null,
-          error: { code: -32603, message: "Internal server error", data: { details: message } },
-        });
+      if (isMcp && (req.method === "POST" || req.method === "GET")) {
+        try {
+          const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
+          const mcpServer = createMcpServer(vaultDef, wikiDef);
+          await mcpServer.connect(transport);
+          await transport.handleRequest(req, res);
+        } catch (err) {
+          const message = err instanceof Error ? err.message : "Unknown internal error";
+          logError({ errorType: "mcp_handler", message });
+          sendJSON(res, 200, {
+            jsonrpc: "2.0",
+            id: null,
+            error: { code: -32603, message: "Internal server error", data: { details: message } },
+          });
+        }
+        return;
       }
-      return;
+
+      if (req.method === "GET" && req.url === "/health") {
+        sendJSON(res, 200, { ok: true, version: VERSION });
+        return;
+      }
+
+      res.writeHead(404);
+      res.end("Not found");
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Unknown error";
+      logError({ errorType: "http_handler", message });
+      res.writeHead(500);
+      res.end("Internal server error");
     }
+  };
+}
 
-    if (req.method === "GET" && req.url === "/health") {
-      sendJSON(res, 200, { ok: true, version: VERSION });
-      return;
-    }
-
-    res.writeHead(404);
-    res.end("Not found");
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Unknown error";
-    logError({ errorType: "http_handler", message });
-    res.writeHead(500);
-    res.end("Internal server error");
-  }
-});
-
-httpServer.listen(config.port, () => {
-  console.log(`kohen-mcp v${VERSION} running on http://localhost:${config.port}`);
-});
+if (import.meta.main) {
+  const vault = config.vaults.find((v) => v.name === "vault")!;
+  const wiki = config.vaults.find((v) => v.name === "wiki")!;
+  const httpServer = createServer(createHttpHandler(vault, wiki));
+  httpServer.listen(config.port, () => {
+    console.log(`kohen-mcp v${VERSION} running on http://localhost:${config.port}`);
+  });
+}
