@@ -1,7 +1,43 @@
-import type { UserConfig } from "./schema.ts";
+import type { UserConfig, ProxiedServerConfig } from "./schema.ts";
+
+const proxied: ProxiedServerConfig[] = [
+  {
+    name: "apple-notes",
+    command: "bunx",
+    args: ["apple-notes-mcp"],
+  },
+  {
+    name: "calendar",
+    command: "bunx",
+    args: ["calendar-mcp"],
+    env: {
+      GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID ?? "",
+      GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET ?? "",
+      GOOGLE_REFRESH_TOKEN: process.env.GOOGLE_REFRESH_TOKEN ?? "",
+    },
+  },
+  {
+    name: "netnewswire",
+    command: "node",
+    args: [`${process.env.HOME}/netnewswire-mcp/dist/index.js`],
+  },
+  {
+    // Verify package name before first run — try: bunx gmail-mcp-server
+    // Alternatives if it fails: "@gongrzhe/server-gmail-autoauth-mcp", "mcp-gmail"
+    name: "gmail",
+    command: "bunx",
+    args: ["gmail-mcp-server"],
+    env: {
+      GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID ?? "",
+      GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET ?? "",
+      GOOGLE_REFRESH_TOKEN: process.env.GOOGLE_REFRESH_TOKEN ?? "",
+    },
+  },
+];
 
 export default {
   port: Number(process.env.PORT) || 3000,
+  proxied,
   vaults: [
     {
       name: "vault",
@@ -18,12 +54,6 @@ export default {
         "kohen's personal wiki — a second Obsidian vault for reference material, permanent notes, and structured knowledge. Use for looking up stable reference content, not day-to-day active notes.",
     },
   ],
-  github: {
-    token: process.env.GITHUB_TOKEN ?? "",
-    owner: "kohenmahler",
-    repo: "obsidian-vault",
-    branch: "main",
-  },
   // postgres: {
   //   url: process.env.PG_URL ?? "",
   // },

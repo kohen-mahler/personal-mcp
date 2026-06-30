@@ -7,7 +7,7 @@ phase: complete
 progress: 59/59
 mode: ALGORITHM
 started: 2026-06-21
-updated: 2026-06-23
+updated: 2026-06-29
 ---
 
 ## Problem
@@ -168,6 +168,7 @@ kohen-mcp v1.0 is a locally-running MCP server that gives any connected AI tool 
 
 ## Decisions
 
+- 2026-06-29: Proxy aggregation layer added. ProxyManager spawns child MCPs at startup, re-registers tools on per-request McpServer instances. Forge delegation skipped — show-your-math: 5 small well-specified files, direct implementation faster than round-trip. Gmail package name (gmail-mcp-server) flagged for user verification. Zod v4 requires z.record(z.string(), z.unknown()) not z.record(z.unknown()). callTool return union normalized to content shape at proxy layer.
 - 2026-06-23: Overwrite protection required — `overwrite: true` opt-in (default blocks). Obsidian REST API does silent overwrite; we don't because the MCP caller is an AI.
 - 2026-06-23: Atomic replace via `.__mcp_pending__` → `fs.rename()`. Orphaned `.mcp_pending__` on crash is acceptable — rare, harmless, no cleanup needed.
 - 2026-06-23: `vault_append` always prefixes `\n\n` (vs Obsidian's single `\n` if missing). Consistent double-space produces clean markdown paragraphs regardless of file state.

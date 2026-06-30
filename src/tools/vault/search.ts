@@ -38,12 +38,12 @@ export async function searchVault(
     return { ok: true, results };
   } catch (err) {
     const isTimeout = err instanceof Error && err.name === "AbortError";
-    const port_hint = `port ${port}`;
+    const portHint = `port ${port}`;
     return {
       ok: false,
       error: isTimeout
-        ? `Omnisearch timed out on ${port_hint} — is Obsidian open with the HTTP server enabled?`
-        : `Omnisearch unavailable on ${port_hint} — is Obsidian open with the HTTP server enabled?`,
+        ? `Omnisearch timed out on ${portHint} — is Obsidian open with the HTTP server enabled?`
+        : `Omnisearch unavailable on ${portHint} — is Obsidian open with the HTTP server enabled?`,
     };
   } finally {
     clearTimeout(timeout);

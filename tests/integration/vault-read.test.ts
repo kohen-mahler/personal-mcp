@@ -105,6 +105,13 @@ describe("readVaultFile — happy path", () => {
     const img = result.data.links.find((l) => l.target === "photo.png");
     expect(img).toBeUndefined();
   });
+
+  it("auto-appends .md when parent directory name contains a dot", async () => {
+    const result = await readVaultFile(FIXTURE_ROOT, "CS 101.5/notes");
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.data.path).toBe("CS 101.5/notes.md");
+  });
 });
 
 describe("readVaultFile — error cases", () => {

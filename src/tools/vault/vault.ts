@@ -5,22 +5,7 @@ import { readVaultFile } from "./read";
 import { listVaultDir } from "./list";
 import { writeVaultFile, appendVaultFile, patchVaultFile, deleteVaultFile, type PatchParams } from "./write";
 import { searchVault } from "./search";
-import { toToolText, toToolError } from "./format";
-
-const OBSIDIAN_EXT = /\.(md|canvas|pdf|png|jpe?g|gif|bmp|svg|webp|avif|mp3|wav|m4a|flac|ogg|3gp|webm|mp4|ogv|mov)$/i;
-
-function obsidianPath(hint: string) {
-  return z
-    .string()
-    .transform((p) => {
-      const filename = p.split("/").pop() ?? "";
-      return filename.includes(".") ? p : `${p}.md`;
-    })
-    .refine((p) => OBSIDIAN_EXT.test(p), {
-      message: "Unsupported Obsidian file type. Omit extension to default to .md, or use a supported format (image, pdf, canvas).",
-    })
-    .describe(hint);
-}
+import { toToolText, toToolError, obsidianPath } from "./format";
 
 export function registerVaultTools(server: McpServer, vault: VaultDefinition) {
 
@@ -28,10 +13,11 @@ export function registerVaultTools(server: McpServer, vault: VaultDefinition) {
     "vault_read",
     {
       description:
-        "Reads a vault file by path — returns markdown, frontmatter, tags, wikilinks. " +
+        "Reads a vault file by path — returns markdown, frontmatter, tags, and links (wikilinks + markdown links). " +
         "Vault = kohen's active workspace (daily notes, Jotpad, projects, captures). " +
-        "Only call when kohen requests a specific file. Never speculatively. " +
-        "Call vault_list first when path is unknown.",
+        "SESSION START: always read '00 Dashboard/Jotpad.md' first — it is the live index of kohen's active priorities, current projects, and next actions. Navigate from there. " +
+        "Only call for other files when kohen names one explicitly or Jotpad links to it. Never speculatively browse. " +
+        "Call vault_list when a path is unknown.",
       inputSchema: z.object({
         path: z
           .string()
@@ -75,10 +61,11 @@ export function registerVaultTools(server: McpServer, vault: VaultDefinition) {
     {
       description:
         "Creates or overwrites a vault file on explicit user direction. " +
-        "Never write to vault speculatively — use wiki_append for AI-generated mid-session captures.\n\n" +
-        "PERMISSION REQUIRED: If the file already exists, you MUST set overwrite: true. Only do this when the user has explicitly asked you to overwrite or replace a file. Use vault_append to add content without replacing.",
+        "Never write to vault speculatively — use wiki_append for AI-generated mid-session captures. " +
+        "Use vault_patch for targeted heading, block, or frontmatter edits. " +
+        "Use vault_append to add content without replacing.",
       inputSchema: z.object({
-        path: obsidianPath("Relative path within vault, e.g. 'Notes/idea'. Omit extension to default to .md. Accepts .md, .canvas, .pdf, and all image formats."),
+        path: obsidianPath("Relative path within vault, e.g. 'Notes/idea'. Omit extension to default to .md. Call vault_list first if path is unknown."),
         content: z.string().describe("Full file content to write"),
         overwrite: z.boolean().optional().describe("Set to true to overwrite an existing file. Requires explicit user permission."),
       }),
@@ -98,7 +85,7 @@ export function registerVaultTools(server: McpServer, vault: VaultDefinition) {
         "Only on explicit request from kohen. " +
         "For AI-generated mid-session captures, use wiki_append — never write to vault without kohen directing it.",
       inputSchema: z.object({
-        path: obsidianPath("Relative path within vault, e.g. 'Notes/idea'. Omit extension to default to .md."),
+        path: obsidianPath("Relative path within vault, e.g. 'Notes/idea'. Omit extension to default to .md. Call vault_list first if path is unknown."),
         content: z.string().describe("Content to append"),
       }),
     },
@@ -139,7 +126,9 @@ export function registerVaultTools(server: McpServer, vault: VaultDefinition) {
     "vault_delete",
     {
       description:
-        "Permanently delete a file from kohen's vault. This is irreversible — the file is not moved to trash. Only call this when explicitly asked.",
+        "Permanently delete a file from kohen's vault. Irreversible — not moved to trash. " +
+        "Use vault_read first to capture content if preservation is needed. " +
+        "Only call this when explicitly asked.",
       inputSchema: z.object({
         path: obsidianPath("Relative path of file to delete. Omit extension to default to .md. Call vault_list first to confirm the path before deleting."),
       }),
@@ -158,11 +147,9 @@ export function registerVaultTools(server: McpServer, vault: VaultDefinition) {
         description:
           "Searches vault notes by content when path is unknown — returns ranked results with paths, scores, and excerpts. " +
           "Only call when kohen asks to find something in his personal notes. " +
-          "Use wiki_search to search the AI-maintained knowledge substrate. " +
-          "Supports quoted phrases (\"exact match\") and exclusions (-term). " +
-          "Requires Obsidian to be open with the Omnisearch HTTP server enabled.",
+          "Use wiki_search to search the AI-maintained knowledge substrate.",
         inputSchema: z.object({
-          query: z.string().describe("Search terms. Supports \"quoted phrases\" and -exclusions."),
+          query: z.string().describe("Search terms. Supports \"quoted phrases\" and -exclusions. Requires Obsidian open with Omnisearch HTTP server enabled."),
           limit: z.number().optional().default(10).describe("Maximum results to return (default 10)."),
         }),
       },

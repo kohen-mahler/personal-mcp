@@ -5,10 +5,11 @@ import { z } from "zod";
 import config from "./config/kohen.config";
 import type { VaultDefinition } from "./config/schema";
 import { registerVaultTools, registerWikiTools } from "./tools/vault/index";
+import { initProxyManager, type ProxyManager } from "./tools/proxied/manager";
 
 export const VERSION = "0.1.0";
 
-export function createMcpServer(vaultDef: VaultDefinition, wikiDef: VaultDefinition): McpServer {
+export function createMcpServer(vaultDef: VaultDefinition, wikiDef: VaultDefinition, proxyManager?: ProxyManager): McpServer {
   const server = new McpServer({ name: "kohen-mcp", version: VERSION });
 
   server.registerTool(
@@ -29,6 +30,7 @@ export function createMcpServer(vaultDef: VaultDefinition, wikiDef: VaultDefinit
 
   registerVaultTools(server, vaultDef);
   registerWikiTools(server, wikiDef);
+  proxyManager?.registerTools(server);
 
   return server;
 }
@@ -43,7 +45,7 @@ function sendJSON(res: ServerResponse, status: number, body: unknown): void {
   res.end(data);
 }
 
-export function createHttpHandler(vaultDef: VaultDefinition, wikiDef: VaultDefinition) {
+export function createHttpHandler(vaultDef: VaultDefinition, wikiDef: VaultDefinition, proxyManager?: ProxyManager) {
   return async function handler(req: IncomingMessage, res: ServerResponse): Promise<void> {
     try {
       const isMcp = req.url === "/mcp";
@@ -51,7 +53,7 @@ export function createHttpHandler(vaultDef: VaultDefinition, wikiDef: VaultDefin
       if (isMcp && (req.method === "POST" || req.method === "GET")) {
         try {
           const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
-          const mcpServer = createMcpServer(vaultDef, wikiDef);
+          const mcpServer = createMcpServer(vaultDef, wikiDef, proxyManager);
           await mcpServer.connect(transport);
           await transport.handleRequest(req, res);
         } catch (err) {
@@ -85,8 +87,9 @@ export function createHttpHandler(vaultDef: VaultDefinition, wikiDef: VaultDefin
 if (import.meta.main) {
   const vault = config.vaults.find((v) => v.name === "vault")!;
   const wiki = config.vaults.find((v) => v.name === "wiki")!;
-  const httpServer = createServer(createHttpHandler(vault, wiki));
+  const proxyManager = await initProxyManager(config.proxied ?? []);
+  const httpServer = createServer(createHttpHandler(vault, wiki, proxyManager));
   httpServer.listen(config.port, () => {
-    console.log(`kohen-mcp v${VERSION} running on http://localhost:${config.port}`);
+    console.error(`kohen-mcp v${VERSION} running on http://localhost:${config.port} (+${proxyManager.toolCount} proxied tools)`);
   });
 }

@@ -1,10 +1,3 @@
-export interface GitHubConfig {
-  token: string;
-  owner: string;
-  repo: string;
-  branch: string;
-}
-
 export interface PostgresConfig {
   url: string;
 }
@@ -20,9 +13,16 @@ export interface VaultDefinition {
   omnisearchPort?: number;
 }
 
+export interface ProxiedServerConfig {
+  name: string;
+  command: string;
+  args: string[];
+  env?: Record<string, string>;
+}
+
 export interface UserConfig {
   port: number;
   vaults: VaultDefinition[];
-  github: GitHubConfig;
   postgres?: PostgresConfig;
+  proxied?: ProxiedServerConfig[];
 }

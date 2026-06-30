@@ -139,9 +139,9 @@ export async function readVaultFile(
 ): Promise<ReadResult> {
   const root = resolve(rootPath);
 
-  // Auto-append .md if no extension provided
-  const normalizedPath =
-    filePath.includes(".") ? filePath : `${filePath}.md`;
+  // Auto-append .md if the filename (not a parent directory) has no extension
+  const filename = filePath.split("/").pop() ?? "";
+  const normalizedPath = filename.includes(".") ? filePath : `${filePath}.md`;
 
   const target = resolve(join(root, normalizedPath));
 

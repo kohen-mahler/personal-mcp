@@ -6,11 +6,11 @@
   "scripts": {
     "dev": "bun --watch src/server.ts",
     "start": "bun src/server.ts",
-    "build": "bun build src/server.ts --outdir dist --target bun"
+    "build": "bun build src/server.ts --outdir dist --target bun",
+    "test": "bun test"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",
-    "@octokit/rest": "^21.1.1",
     "markdown-patch": "^1.0.0",
     "yaml": "^2.9.0",
     "zod": "^4.4.3"
