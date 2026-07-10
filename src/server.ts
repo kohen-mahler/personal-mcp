@@ -5,6 +5,7 @@ import { z } from "zod";
 import config from "./config/kohen.config";
 import type { VaultDefinition } from "./config/schema";
 import { registerVaultTools, registerWikiTools } from "./tools/vault/index";
+import { registerRitualTools } from "./tools/ritual/index";
 import { initProxyManager, type ProxyManager } from "./tools/proxied/manager";
 
 export const VERSION = "0.1.0";
@@ -30,6 +31,7 @@ export function createMcpServer(vaultDef: VaultDefinition, wikiDef: VaultDefinit
 
   registerVaultTools(server, vaultDef);
   registerWikiTools(server, wikiDef);
+  registerRitualTools(server, vaultDef, wikiDef);
   proxyManager?.registerTools(server);
 
   return server;
