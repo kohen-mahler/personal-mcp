@@ -4,10 +4,10 @@ slug: kohen-mcp
 project: kohen-mcp
 effort: E3
 phase: complete
-progress: 84/84
+progress: 99/99
 mode: ALGORITHM
 started: 2026-06-21
-updated: 2026-07-09
+updated: 2026-07-16
 ---
 
 ## Problem
@@ -165,6 +165,10 @@ kohen-mcp v1.0 is a locally-running MCP server that gives any connected AI tool 
 | vault-registration | Register 4 new tools in `vault.ts` using `toToolText`/`toToolError` | ISC-29, ISC-45, ISC-50 | write.ts | no (depends on write.ts) |
 | tests-write | Unit + integration tests for all 4 functions | ISC-54–59 | write.ts (can write against spec) | YES — spec is tight enough |
 | markdown-patch-dep | `bun add markdown-patch` | ISC-53 | none | no |
+| pai-skill-definitions | Three concise provider-neutral skill definitions with Algorithm Goal/Design structure | ISC-85–90, ISC-98 | none | yes |
+| pai-skill-registry | Static allowlisted discovery and read functions for definitions/workflows | ISC-91–93 | pai-skill-definitions | no |
+| pai-skill-registration | Register `pai_list_skills` and `pai_read_skill` on the MCP server | ISC-94 | pai-skill-registry | no |
+| pai-skill-tests | Unit and integration coverage for registry, boundaries, and MCP calls | ISC-95–99 | all PAI skill features | no |
 
 ### morning_context Tool (2026-07-09)
 
@@ -194,7 +198,27 @@ kohen-mcp v1.0 is a locally-running MCP server that gives any connected AI tool 
 - [x] ISC-83: Unit test verifies `dailyNotePath` matches `Notes/Daily/YYYY-MM-DD.md`
 - [x] ISC-84: `bun test` passes with 0 failures after implementation
 
+### Provider-Neutral PAI Skills (2026-07-16)
+
+- [x] ISC-85: Canonical PAI skill definitions live under `src/tools/pai/skills/` in this repository
+- [x] ISC-86: Exactly three skills are discoverable: `pai-bootstrap`, `cross-model-handoff`, and `durable-writeback`
+- [x] ISC-87: `pai-bootstrap` description covers read-only session/task context initialization and excludes task mutation
+- [x] ISC-88: `cross-model-handoff` description covers task ownership and transfer and excludes canonical knowledge writes
+- [x] ISC-89: `durable-writeback` description covers canonical wiki persistence and excludes task ownership changes
+- [x] ISC-90: Every skill definition contains Goal, Design, Workflow, and Gotchas sections
+- [x] ISC-91: `pai_list_skills` returns each skill name and concise description without loading full instructions
+- [x] ISC-92: `pai_read_skill` returns one named skill's full definition, including its workflow instructions
+- [x] ISC-93: `pai_read_skill` rejects unknown skill names without accepting arbitrary filesystem paths
+- [x] ISC-94: The MCP server registers `pai_list_skills` and `pai_read_skill` for every connected client
+- [x] ISC-95: Unit tests verify discovery, exact trigger boundaries, full workflow definitions, and unknown-name errors
+- [x] ISC-96: Integration tests verify both PAI tools appear in `tools/list` and return valid content through `tools/call`
+- [x] ISC-97: Anti: no canonical PAI skill definition remains installed under `~/tools/PAI/Skills`
+- [x] ISC-98: Anti: implementation does not modify or depend on provider-specific skill directories
+- [x] ISC-99: `bun test` passes with zero failures after the PAI skill implementation
+
 ## Decisions
+
+- 2026-07-16: PAI skills belong in `personal-mcp/src/tools/pai/skills`, not provider-specific runtime directories or `~/tools`. MCP exposes them through allowlisted `pai_list_skills` and `pai_read_skill` tools so all connected clients share one canonical definition set. Skill descriptions partition responsibilities into read-only bootstrap, task lifecycle handoff, and canonical knowledge writeback.
 
 - 2026-07-09: morning_context as MCP tool (not PAI skill) — user wants the trigger built into personal-mcp. Tool returns raw context bundle; Claude session does the ritual conversation. Delegation floor relaxed (show-your-math: single well-specified module, identical pattern to existing registerWikiTools, no cross-file complexity).
 - 2026-07-09: daily notes path convention established as `Notes/Daily/YYYY-MM-DD.md` — no prior convention existed in vault.
@@ -211,12 +235,24 @@ kohen-mcp v1.0 is a locally-running MCP server that gives any connected AI tool 
 
 ## Changelog
 
+- conjectured: provider-neutral PAI skills required installation into a shared external tools directory
+- refuted_by: connected agents only share capabilities registered by `personal-mcp`; an external filesystem location is neither canonical to the project nor transport-visible
+- learned: keep skill definitions beside the MCP implementation and expose them through allowlisted discovery/read tools
+- criterion_now: ISC-85, ISC-91–94, and ISC-97 verify project-local storage plus transport-level availability
+
 - conjectured: batch `[initialize, request]` approach needed because each POST creates fresh McpServer
 - refuted_by: SDK in stateless mode (`sessionIdGenerator: undefined`) treats server as pre-initialized; any request works standalone
 - learned: stateless StreamableHTTP skips the init handshake requirement; each POST is a self-contained operation
 - criterion_now: ISC-2 / ISC-3 verified with standalone POST/GET; no batch needed
 
 ## Verification
+
+- ISC-85–90: `bun test tests/unit/pai-skills.test.ts` verifies exact allowlist, concise non-overlapping descriptions, and required Goal/Design/Workflow/Gotchas sections
+- ISC-91–96: `bun test tests/integration/server.test.ts` passes 19/19, including `tools/list`, `pai_list_skills`, `pai_read_skill`, and invalid-name schema rejection
+- ISC-97: `test ! -e /Users/kohenmahler/tools/PAI` exits 0 after removing the mistaken external copy
+- ISC-98: `rg` review of `src/tools/pai` finds no provider-specific runtime directory dependency
+- ISC-99: `bun test` passes 200 tests, 0 failures, 477 expectations
+- Build: `bun run build` bundles 336 modules successfully to `dist/server.js`
 
 - ISC-1: `GET /health` → 200 `{ok:true, version:"0.1.0"}` — `bun test tests/integration/server.test.ts` pass
 - ISC-2: `POST /mcp` → 200 SSE event containing tools/call result — `bun test` pass

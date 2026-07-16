@@ -1,4 +1,6 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
+import { appendFileSync, mkdirSync } from "node:fs";
+import { join } from "node:path";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { z } from "zod";
@@ -6,12 +8,80 @@ import config from "./config/kohen.config";
 import type { VaultDefinition } from "./config/schema";
 import { registerVaultTools, registerWikiTools } from "./tools/vault/index";
 import { registerRitualTools } from "./tools/ritual/index";
+import { registerPaiTools } from "./tools/pai/index";
 import { initProxyManager, type ProxyManager } from "./tools/proxied/manager";
 
 export const VERSION = "0.1.0";
 
+// ── MCP call logging ──────────────────────────────────────────────────────────
+
+const MCP_LOG_PATH = join(process.env.HOME ?? "", ".claude", "PAI", "MEMORY", "OBSERVABILITY", "mcp-calls.jsonl");
+
+function logMcpCall(entry: {
+  timestamp: string;
+  tool_name: string;
+  latency_ms: number;
+  status: "success" | "error";
+  error_message?: string;
+  request?: unknown;
+  response?: unknown;
+}): void {
+  try {
+    mkdirSync(join(process.env.HOME ?? "", ".claude", "PAI", "MEMORY", "OBSERVABILITY"), { recursive: true });
+    appendFileSync(MCP_LOG_PATH, JSON.stringify(entry) + "\n");
+  } catch {
+    // non-fatal — never let logging break the server
+  }
+}
+
+// Wraps McpServer.registerTool to log every call with args, response, latency, and status.
+function instrumentedServer(server: McpServer): McpServer {
+  const orig = server.registerTool.bind(server) as any;
+  (server as any).registerTool = (name: string, toolConfig: unknown, handler: (...args: unknown[]) => Promise<unknown>) => {
+    return orig(name, toolConfig as any, async (...args: unknown[]) => {
+      const start = Date.now();
+      const request = args[0] ?? null;
+      try {
+        const result = await handler(...args);
+        // Truncate large response bodies to keep the JSONL manageable
+        const responsePreview = truncateForLog(result);
+        logMcpCall({
+          timestamp: new Date().toISOString(),
+          tool_name: name,
+          latency_ms: Date.now() - start,
+          status: "success",
+          request,
+          response: responsePreview,
+        });
+        return result;
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        logMcpCall({
+          timestamp: new Date().toISOString(),
+          tool_name: name,
+          latency_ms: Date.now() - start,
+          status: "error",
+          error_message: message,
+          request,
+        });
+        throw err;
+      }
+    });
+  };
+  return server;
+}
+
+function truncateForLog(value: unknown, maxChars = 2000): unknown {
+  if (value === null || value === undefined) return value;
+  const s = JSON.stringify(value);
+  if (s.length <= maxChars) return value;
+  return { _truncated: true, preview: s.slice(0, maxChars) + "…" };
+}
+
+// ── MCP Server factory ────────────────────────────────────────────────────────
+
 export function createMcpServer(vaultDef: VaultDefinition, wikiDef: VaultDefinition, proxyManager?: ProxyManager): McpServer {
-  const server = new McpServer({ name: "kohen-mcp", version: VERSION });
+  const server = instrumentedServer(new McpServer({ name: "kohen-mcp", version: VERSION }));
 
   server.registerTool(
     "ping",
@@ -32,10 +102,13 @@ export function createMcpServer(vaultDef: VaultDefinition, wikiDef: VaultDefinit
   registerVaultTools(server, vaultDef);
   registerWikiTools(server, wikiDef);
   registerRitualTools(server, vaultDef, wikiDef);
+  registerPaiTools(server, vaultDef, wikiDef);
   proxyManager?.registerTools(server);
 
   return server;
 }
+
+// ── HTTP helpers ──────────────────────────────────────────────────────────────
 
 function logError(context: Record<string, unknown>): void {
   console.error(JSON.stringify({ timestamp: new Date().toISOString(), ...context }));
@@ -46,6 +119,8 @@ function sendJSON(res: ServerResponse, status: number, body: unknown): void {
   res.writeHead(status, { "Content-Type": "application/json" });
   res.end(data);
 }
+
+// ── HTTP request handler ──────────────────────────────────────────────────────
 
 export function createHttpHandler(vaultDef: VaultDefinition, wikiDef: VaultDefinition, proxyManager?: ProxyManager) {
   return async function handler(req: IncomingMessage, res: ServerResponse): Promise<void> {
@@ -85,6 +160,8 @@ export function createHttpHandler(vaultDef: VaultDefinition, wikiDef: VaultDefin
     }
   };
 }
+
+// ── Entrypoint ────────────────────────────────────────────────────────────────
 
 if (import.meta.main) {
   const vault = config.vaults.find((v) => v.name === "vault")!;
