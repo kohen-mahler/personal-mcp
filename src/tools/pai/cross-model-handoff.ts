@@ -37,7 +37,7 @@ function appendToLog(body: string, entry: string): string {
     : body.trimEnd() + "\n\n## Handoff Log\n\n" + entry;
 }
 
-export function registerHandoffTools(server: McpServer, vault: VaultDefinition): void {
+export function registerHandoffTools(server: McpServer, wiki: VaultDefinition): void {
   server.registerTool(
     "pai_claim_task",
     {
@@ -60,7 +60,7 @@ export function registerHandoffTools(server: McpServer, vault: VaultDefinition):
     async ({ slug, model_name, branch, lease_hours }) => {
       try {
         const taskPath = `queue/active/${slug}.md`;
-        const readResult = await readVaultFile(vault.rootPath, taskPath);
+        const readResult = await readVaultFile(wiki.rootPath, taskPath);
         if (!readResult.ok) return toToolError(`Task not found: ${slug}`);
 
         const { fm, body } = extractFrontmatter(readResult.data.content);
@@ -81,7 +81,7 @@ export function registerHandoffTools(server: McpServer, vault: VaultDefinition):
         if (branch) fm.branch = branch;
 
         const writeResult = await writeVaultFile(
-          vault.rootPath,
+          wiki.rootPath,
           taskPath,
           buildContent(fm, body),
           { overwrite: true }
@@ -124,7 +124,7 @@ export function registerHandoffTools(server: McpServer, vault: VaultDefinition):
     async ({ slug, changes, verification, risks, next_owner, next_action }) => {
       try {
         const taskPath = `queue/active/${slug}.md`;
-        const readResult = await readVaultFile(vault.rootPath, taskPath);
+        const readResult = await readVaultFile(wiki.rootPath, taskPath);
         if (!readResult.ok) return toToolError(`Task not found: ${slug}`);
 
         const { fm, body } = extractFrontmatter(readResult.data.content);
@@ -155,7 +155,7 @@ export function registerHandoffTools(server: McpServer, vault: VaultDefinition):
         fm.handed_off_at = now;
 
         const writeResult = await writeVaultFile(
-          vault.rootPath,
+          wiki.rootPath,
           taskPath,
           buildContent(fm, appendToLog(body, lines.join("\n"))),
           { overwrite: true }
@@ -193,7 +193,7 @@ export function registerHandoffTools(server: McpServer, vault: VaultDefinition):
     async ({ slug, to_owner, reason, branch, lease_hours }) => {
       try {
         const taskPath = `queue/active/${slug}.md`;
-        const readResult = await readVaultFile(vault.rootPath, taskPath);
+        const readResult = await readVaultFile(wiki.rootPath, taskPath);
         if (!readResult.ok) return toToolError(`Task not found: ${slug}`);
 
         const { fm, body } = extractFrontmatter(readResult.data.content);
@@ -218,7 +218,7 @@ export function registerHandoffTools(server: McpServer, vault: VaultDefinition):
         if (branch) fm.branch = branch;
 
         const writeResult = await writeVaultFile(
-          vault.rootPath,
+          wiki.rootPath,
           taskPath,
           buildContent(fm, appendToLog(body, lines.join("\n"))),
           { overwrite: true }
@@ -260,7 +260,7 @@ export function registerHandoffTools(server: McpServer, vault: VaultDefinition):
     async ({ slug, final_verification, summary }) => {
       try {
         const taskPath = `queue/active/${slug}.md`;
-        const readResult = await readVaultFile(vault.rootPath, taskPath);
+        const readResult = await readVaultFile(wiki.rootPath, taskPath);
         if (!readResult.ok) return toToolError(`Task not found: ${slug}`);
 
         const { fm, body } = extractFrontmatter(readResult.data.content);
@@ -286,7 +286,7 @@ export function registerHandoffTools(server: McpServer, vault: VaultDefinition):
         fm.closed_at = now;
 
         const writeResult = await writeVaultFile(
-          vault.rootPath,
+          wiki.rootPath,
           taskPath,
           buildContent(fm, appendToLog(body, lines.join("\n"))),
           { overwrite: true }
@@ -316,7 +316,7 @@ export function registerHandoffTools(server: McpServer, vault: VaultDefinition):
     },
     async ({ owner, status }) => {
       try {
-        const listResult = await listVaultDir(vault.rootPath, "queue/active");
+        const listResult = await listVaultDir(wiki.rootPath, "queue/active");
         if (!listResult.ok) return toToolText(JSON.stringify({ tasks: [] }, null, 2));
 
         const now = new Date();
@@ -326,7 +326,7 @@ export function registerHandoffTools(server: McpServer, vault: VaultDefinition):
           if (file.type !== "file" || !file.name.endsWith(".md")) continue;
 
           const slug = file.name.replace(".md", "");
-          const readResult = await readVaultFile(vault.rootPath, `queue/active/${slug}.md`);
+          const readResult = await readVaultFile(wiki.rootPath, `queue/active/${slug}.md`);
           if (!readResult.ok) continue;
 
           const { fm } = extractFrontmatter(readResult.data.content);

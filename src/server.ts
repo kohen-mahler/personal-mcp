@@ -102,7 +102,7 @@ export function createMcpServer(vaultDef: VaultDefinition, wikiDef: VaultDefinit
   registerVaultTools(server, vaultDef);
   registerWikiTools(server, wikiDef);
   registerRitualTools(server, vaultDef, wikiDef);
-  registerPaiTools(server, vaultDef, wikiDef);
+  registerPaiTools(server, wikiDef);
   proxyManager?.registerTools(server);
 
   return server;

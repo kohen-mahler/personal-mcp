@@ -7,7 +7,6 @@ import { toToolError, toToolText } from "../vault/format";
 
 export function registerBootstrapTool(
   server: McpServer,
-  vault: VaultDefinition,
   wiki: VaultDefinition
 ): void {
   server.registerTool(
@@ -26,7 +25,7 @@ export function registerBootstrapTool(
     },
     async ({ task_slug }) => {
       try {
-        const queueResult = await listVaultDir(vault.rootPath, "queue/active");
+        const queueResult = await listVaultDir(wiki.rootPath, "queue/active");
         const activeTasks = queueResult.ok
           ? queueResult.entries
               .filter((f) => f.type === "file" && f.name.endsWith(".md"))
@@ -41,7 +40,7 @@ export function registerBootstrapTool(
         };
 
         if (task_slug) {
-          const taskResult = await readVaultFile(vault.rootPath, `queue/active/${task_slug}.md`);
+          const taskResult = await readVaultFile(wiki.rootPath, `queue/active/${task_slug}.md`);
           if (taskResult.ok) {
             context.task = taskResult.data;
           } else {

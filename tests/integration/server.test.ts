@@ -126,8 +126,12 @@ describe("server — tools/list", () => {
     expect(names).toContain("vault_list");
     expect(names).toContain("wiki_read");
     expect(names).toContain("wiki_list");
-    expect(names).toContain("pai_list_skills");
-    expect(names).toContain("pai_read_skill");
+    expect(names).toContain("pai_bootstrap");
+    expect(names).toContain("pai_claim_task");
+    expect(names).toContain("pai_handoff_task");
+    expect(names).toContain("pai_close_task");
+    expect(names).not.toContain("pai_list_skills");
+    expect(names).not.toContain("pai_read_skill");
   });
 
   it("each tool has a name and description", async () => {
@@ -149,36 +153,6 @@ describe("server — tools/list", () => {
     for (const tool of tools) {
       expect(tool.inputSchema).toBeDefined();
     }
-  });
-});
-
-// ─── server — PAI skills ──────────────────────────────────────────────────────
-
-describe("server — PAI skills", () => {
-  it("pai_list_skills returns the three concise summaries", async () => {
-    const result = await callTool("pai_list_skills");
-    const skills = JSON.parse(result?.content?.[0]?.text ?? "null");
-    expect(skills.map((skill: any) => skill.name)).toEqual([
-      "pai-bootstrap",
-      "cross-model-handoff",
-      "durable-writeback",
-    ]);
-    expect(skills.every((skill: any) => typeof skill.description === "string")).toBe(true);
-    expect(skills.every((skill: any) => skill.content === undefined)).toBe(true);
-  });
-
-  it("pai_read_skill returns a full selected definition", async () => {
-    const result = await callTool("pai_read_skill", { name: "pai-bootstrap" });
-    const skill = JSON.parse(result?.content?.[0]?.text ?? "null");
-    expect(skill.name).toBe("pai-bootstrap");
-    expect(skill.content).toContain("## Goal");
-    expect(skill.content).toContain("## Design");
-    expect(skill.content).toContain("## Workflow");
-  });
-
-  it("pai_read_skill rejects non-allowlisted names at schema validation", async () => {
-    const result = await callTool("pai_read_skill", { name: "../../package.json" });
-    expect(result?.isError).toBe(true);
   });
 });
 
