@@ -1,4 +1,6 @@
 import { z } from "zod";
+import { appendFileSync, mkdirSync } from "node:fs";
+import { join } from "node:path";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { VaultDefinition } from "../../config/schema";
 import { readVaultFile } from "../vault/read";
@@ -6,6 +8,16 @@ import { writeVaultFile } from "../vault/write";
 import { listVaultDir } from "../vault/list";
 import { toToolError, toToolText } from "../vault/format";
 import { parse as parseYaml, stringify as stringifyYaml } from "yaml";
+
+function appendObservabilityLog(wikiRoot: string, filename: string, entry: object): void {
+  try {
+    const dir = join(wikiRoot, "MEMORY", "OBSERVABILITY");
+    mkdirSync(dir, { recursive: true });
+    appendFileSync(join(dir, filename), JSON.stringify(entry) + "\n");
+  } catch {
+    // non-fatal
+  }
+}
 
 type TaskStatus = "claimed" | "handed_off" | "complete";
 
@@ -65,9 +77,20 @@ export function registerHandoffTools(server: McpServer, wiki: VaultDefinition): 
 
         const { fm, body } = extractFrontmatter(readResult.data.content);
 
-        if (fm.owner) {
+        if (fm.owner && fm.owner !== model_name) {
           return toToolError(
             `Task already claimed by ${fm.owner}. Lease expires: ${fm.lease_expires}`
+          );
+        }
+
+        // Idempotent re-claim by same owner — return existing state without rewriting
+        if (fm.owner === model_name) {
+          return toToolText(
+            JSON.stringify(
+              { success: true, claimed_at: fm.claimed_at, lease_expires: fm.lease_expires, idempotent: true },
+              null,
+              2
+            )
           );
         }
 
@@ -87,6 +110,15 @@ export function registerHandoffTools(server: McpServer, wiki: VaultDefinition): 
           { overwrite: true }
         );
         if (!writeResult.ok) return toToolError(`Failed to claim task: ${writeResult.error}`);
+
+        appendObservabilityLog(wiki.rootPath, "task-ownership.jsonl", {
+          timestamp: fm.claimed_at,
+          task: slug,
+          model: model_name,
+          action: "claim",
+          branch: branch ?? null,
+          lease_expires: fm.lease_expires,
+        });
 
         return toToolText(
           JSON.stringify(
@@ -130,10 +162,11 @@ export function registerHandoffTools(server: McpServer, wiki: VaultDefinition): 
         const { fm, body } = extractFrontmatter(readResult.data.content);
         if (!fm.owner) return toToolError("Cannot hand off unowned task");
 
+        const previousOwner = fm.owner;
         const now = new Date().toISOString();
 
         const lines = [
-          `### Handoff — ${fm.owner} → ${next_owner}`,
+          `### Handoff — ${previousOwner} → ${next_owner}`,
           ``,
           `**Timestamp:** ${now}`,
           ``,
@@ -161,6 +194,15 @@ export function registerHandoffTools(server: McpServer, wiki: VaultDefinition): 
           { overwrite: true }
         );
         if (!writeResult.ok) return toToolError(`Failed to hand off task: ${writeResult.error}`);
+
+        appendObservabilityLog(wiki.rootPath, "task-handoffs.jsonl", {
+          timestamp: now,
+          task: slug,
+          from: previousOwner,
+          to: next_owner,
+          action: "handoff",
+          changes_summary: changes.substring(0, 100),
+        });
 
         return toToolText(JSON.stringify({ success: true, handed_off_at: now }, null, 2));
       } catch (error) {
