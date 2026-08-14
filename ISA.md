@@ -43,7 +43,7 @@ Any tool that connects to kohen-mcp gets the same vault access: read a file, lis
 
 - Runtime: Bun only (never Node/npm)
 - Transport: StreamableHTTP stateless (`sessionIdGenerator: undefined`) on port 3000
-- Vault path: `VAULT_PATH` env var → `/Users/kohenmahler/Library/CloudStorage/GoogleDrive-mahlerkohen@gmail.com/My Drive/School`
+- Vault path: `VAULT_PATH` env var → configurable local Obsidian vault root (e.g. `~/vault`)
 - TypeScript always — no Python
 - MCP SDK: `@modelcontextprotocol/sdk` — no custom transport layer
 - Patch library: `markdown-patch` (same library as obsidian-local-rest-api)
@@ -249,7 +249,7 @@ kohen-mcp v1.0 is a locally-running MCP server that gives any connected AI tool 
 
 - ISC-85–90: `bun test tests/unit/pai-skills.test.ts` verifies exact allowlist, concise non-overlapping descriptions, and required Goal/Design/Workflow/Gotchas sections
 - ISC-91–96: `bun test tests/integration/server.test.ts` passes 19/19, including `tools/list`, `pai_list_skills`, `pai_read_skill`, and invalid-name schema rejection
-- ISC-97: `test ! -e /Users/kohenmahler/tools/PAI` exits 0 after removing the mistaken external copy
+- ISC-97: `test ! -e ~/tools/PAI` exits 0 after removing the mistaken external copy
 - ISC-98: `rg` review of `src/tools/pai` finds no provider-specific runtime directory dependency
 - ISC-99: `bun test` passes 200 tests, 0 failures, 477 expectations
 - Build: `bun run build` bundles 336 modules successfully to `dist/server.js`
