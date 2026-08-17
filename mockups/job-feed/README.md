@@ -39,6 +39,18 @@ Run the data-contract check before promoting parsed wiki data into the UI:
 /home/mahlerkohen/.bun/bin/bun mockups/job-feed/validate-job-feed-data.js
 ```
 
+Verify the checked-in UI data against the current wiki-backed parser:
+
+```sh
+/home/mahlerkohen/.bun/bin/bun mockups/job-feed/verify-wiki-backed-data.js
+```
+
+Regenerate `job-feed-data.js` from the wiki after tracker/company/source notes change:
+
+```sh
+/home/mahlerkohen/.bun/bin/bun mockups/job-feed/generate-job-feed-data.js --write
+```
+
 ## Staged PR Proposal
 
 1. `PR 1: Static visual tracker mockup`
@@ -46,8 +58,8 @@ Run the data-contract check before promoting parsed wiki data into the UI:
    - Review tab layout, funnel, detail view, context graph, and reinforcement model.
 
 2. `PR 2: Wiki parser and data endpoint`
-   - Parse `wiki/career/internship-tracker.md`, source notes, company notes, and contact notes into the same data shape.
-   - Add tests for status, date, follow-up, and link extraction.
+   - Parse `wiki/career/internship-tracker.md`, source notes, company notes, and monitor note learning topics into the same data shape.
+   - Verify checked-in UI data against parsed wiki state.
 
 3. `PR 3: Writeback actions`
    - Add update-stage, log-follow-up, attach-contact, and archive-outcome operations.
