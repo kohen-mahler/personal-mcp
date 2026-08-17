@@ -1,5 +1,6 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { appendFileSync, mkdirSync } from "node:fs";
+import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
@@ -12,6 +13,7 @@ import { registerPaiTools } from "./tools/pai/index";
 import { initProxyManager, type ProxyManager } from "./tools/proxied/manager";
 
 export const VERSION = "0.1.0";
+const JOB_FEED_ASSET_DIR = join(process.cwd(), "mockups", "job-feed");
 
 // ── MCP call logging ──────────────────────────────────────────────────────────
 
@@ -120,12 +122,60 @@ function sendJSON(res: ServerResponse, status: number, body: unknown): void {
   res.end(data);
 }
 
+function sendRedirect(res: ServerResponse, location: string): void {
+  res.writeHead(302, { Location: location });
+  res.end();
+}
+
+function contentTypeFor(fileName: string): string {
+  if (fileName.endsWith(".html")) return "text/html; charset=utf-8";
+  if (fileName.endsWith(".css")) return "text/css; charset=utf-8";
+  if (fileName.endsWith(".js")) return "text/javascript; charset=utf-8";
+  return "application/octet-stream";
+}
+
+async function serveJobFeedAsset(req: IncomingMessage, res: ServerResponse): Promise<boolean> {
+  if (req.method !== "GET" && req.method !== "HEAD") return false;
+  const pathname = new URL(req.url ?? "/", "http://localhost").pathname;
+  if (pathname === "/job-feed") {
+    sendRedirect(res, "/job-feed/");
+    return true;
+  }
+  if (!pathname.startsWith("/job-feed/")) return false;
+
+  const requested = pathname.slice("/job-feed/".length) || "index.html";
+  if (!/^[a-zA-Z0-9._-]+$/.test(requested)) {
+    res.writeHead(400);
+    res.end("Bad request");
+    return true;
+  }
+
+  try {
+    const file = await readFile(join(JOB_FEED_ASSET_DIR, requested));
+    res.writeHead(200, { "Content-Type": contentTypeFor(requested) });
+    if (req.method === "HEAD") {
+      res.end();
+      return true;
+    }
+    res.end(file);
+    return true;
+  } catch {
+    res.writeHead(404);
+    res.end("Not found");
+    return true;
+  }
+}
+
 // ── HTTP request handler ──────────────────────────────────────────────────────
 
 export function createHttpHandler(vaultDef: VaultDefinition, wikiDef: VaultDefinition, proxyManager?: ProxyManager) {
   return async function handler(req: IncomingMessage, res: ServerResponse): Promise<void> {
     try {
       const isMcp = req.url === "/mcp";
+
+      if (await serveJobFeedAsset(req, res)) {
+        return;
+      }
 
       if (isMcp && (req.method === "POST" || req.method === "GET")) {
         try {

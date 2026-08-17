@@ -78,6 +78,33 @@ describe("server — transport", () => {
     expect(res.status).toBe(404);
   });
 
+  it("GET /job-feed redirects to mounted tracker route", async () => {
+    const res = await fetch(`${baseUrl}/job-feed`, { redirect: "manual" });
+    expect(res.status).toBe(302);
+    expect(res.headers.get("location")).toBe("/job-feed/");
+  });
+
+  it("GET /job-feed/ serves the visual tracker app", async () => {
+    const res = await fetch(`${baseUrl}/job-feed/`);
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-type")).toContain("text/html");
+    const body = await res.text();
+    expect(body).toContain("Job Feed Visual Tracker");
+    expect(body).toContain("./app.js");
+  });
+
+  it("GET /job-feed/app.js serves tracker JavaScript", async () => {
+    const res = await fetch(`${baseUrl}/job-feed/app.js`);
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-type")).toContain("text/javascript");
+    expect(await res.text()).toContain("renderActions");
+  });
+
+  it("GET /job-feed/ rejects nested asset traversal", async () => {
+    const res = await fetch(`${baseUrl}/job-feed/../server.ts`);
+    expect([400, 404]).toContain(res.status);
+  });
+
   it("GET /mcp returns 200 (SSE stream opens)", async () => {
     const res = await fetch(`${baseUrl}/mcp`, {
       headers: { Accept: "text/event-stream" },

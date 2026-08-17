@@ -20,6 +20,7 @@ Endpoints:
 | `/mcp` | POST | MCP JSON-RPC tool calls |
 | `/mcp` | GET | SSE stream for server-sent events |
 | `/health` | GET | `{ ok: true, version }` |
+| `/job-feed/` | GET | Visual job-search tracker UI |
 
 ## Setup
 
