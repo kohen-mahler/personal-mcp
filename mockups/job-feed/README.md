@@ -1,6 +1,6 @@
 # Job Feed Visual Tracker Mockup
 
-Static mockup for the proposed job-feed rework. Open `index.html` directly in a browser.
+Static implementation for the proposed job-feed rework. It is mounted by `personal-mcp` at `http://localhost:3000/job-feed/` when the server is running.
 
 ## Scope
 
@@ -10,6 +10,8 @@ This mockup implements four tabs:
 - `Funnel` — pipeline counts and stage records.
 - `Detail` — enriched per-job view driven from structured opportunity data.
 - `Context Graph` — directed wiki relationships and backlink rules.
+
+It also includes a `Light / Dark / Auto` theme control. Auto follows the system color scheme.
 
 ## Data Flow
 
