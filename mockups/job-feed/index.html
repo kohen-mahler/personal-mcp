@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Job Feed Visual Tracker</title>
+    <link rel="stylesheet" href="./styles.css">
+  </head>
+  <body>
+    <main class="shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">Career monitor</p>
+          <h1>Job Feed Visual Tracker</h1>
+        </div>
+        <div class="freshness" id="freshness"></div>
+      </header>
+
+      <section class="tabs" aria-label="Job tracker views" role="tablist">
+        <button class="tab is-active" id="tab-control-today" type="button" data-tab="today" role="tab" aria-selected="true" aria-controls="tab-today">Today Actions</button>
+        <button class="tab" id="tab-control-funnel" type="button" data-tab="funnel" role="tab" aria-selected="false" aria-controls="tab-funnel">Funnel</button>
+        <button class="tab" id="tab-control-detail" type="button" data-tab="detail" role="tab" aria-selected="false" aria-controls="tab-detail">Detail</button>
+        <button class="tab" id="tab-control-graph" type="button" data-tab="graph" role="tab" aria-selected="false" aria-controls="tab-graph">Context Graph</button>
+      </section>
+
+      <section class="view is-active" id="tab-today" role="tabpanel" aria-labelledby="tab-control-today">
+        <div class="metric-grid" id="metrics"></div>
+        <div class="two-column">
+          <section class="panel">
+            <div class="panel-header">
+              <h2>Action Queue</h2>
+              <span id="action-count"></span>
+            </div>
+            <div class="action-list" id="action-list"></div>
+          </section>
+          <section class="panel">
+            <div class="panel-header">
+              <h2>Reinforcement Loop</h2>
+              <span>Data flow</span>
+            </div>
+            <div class="loop-list" id="loop-list"></div>
+          </section>
+        </div>
+      </section>
+
+      <section class="view" id="tab-funnel" role="tabpanel" aria-labelledby="tab-control-funnel">
+        <div class="funnel" id="funnel"></div>
+        <section class="panel">
+          <div class="panel-header">
+            <h2>Stage Records</h2>
+            <span>Derived from opportunity fields</span>
+          </div>
+          <div class="stage-table" id="stage-table"></div>
+        </section>
+      </section>
+
+      <section class="view" id="tab-detail" role="tabpanel" aria-labelledby="tab-control-detail">
+        <div class="detail-layout">
+          <aside class="job-picker" id="job-picker"></aside>
+          <section class="detail-panel" id="detail-panel"></section>
+        </div>
+      </section>
+
+      <section class="view" id="tab-graph" role="tabpanel" aria-labelledby="tab-control-graph">
+        <div class="graph-layout">
+          <section class="panel">
+            <div class="panel-header">
+              <h2>Wiki Link Map</h2>
+              <span>Monitor to context</span>
+            </div>
+            <div class="graph" id="graph"></div>
+          </section>
+          <section class="panel">
+            <div class="panel-header">
+              <h2>Backlink Rules</h2>
+              <span>Natural upkeep</span>
+            </div>
+            <div class="rule-list" id="backlink-rules"></div>
+          </section>
+        </div>
+      </section>
+    </main>
+
+    <script src="./job-feed-data.js"></script>
+    <script src="./app.js"></script>
+  </body>
+</html>
