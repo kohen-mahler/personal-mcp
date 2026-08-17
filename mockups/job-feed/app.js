@@ -1,5 +1,6 @@
 const TODAY = new Date(`${JOB_FEED_DATA.generatedAt}T00:00:00Z`);
 let selectedJobId = JOB_FEED_DATA.opportunities[0]?.id;
+let themePreference = localStorage.getItem("job-feed-theme") ?? "auto";
 
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => Array.from(document.querySelectorAll(selector));
@@ -378,6 +379,13 @@ function bindEvents() {
   $$(".tab").forEach((tab) => {
     tab.addEventListener("click", () => activateTab(tab.dataset.tab));
   });
+  $$("[data-theme-choice]").forEach((button) => {
+    button.addEventListener("click", () => {
+      themePreference = button.dataset.themeChoice;
+      localStorage.setItem("job-feed-theme", themePreference);
+      applyTheme();
+    });
+  });
   document.addEventListener("click", (event) => {
     const target = event.target.closest("[data-job]");
     if (!target) return;
@@ -392,6 +400,13 @@ function bindEvents() {
     renderFunnel();
     renderStageTable();
     activateTab("detail");
+  });
+}
+
+function applyTheme() {
+  document.documentElement.dataset.theme = themePreference === "auto" ? "" : themePreference;
+  $$("[data-theme-choice]").forEach((button) => {
+    button.classList.toggle("is-active", button.dataset.themeChoice === themePreference);
   });
 }
 
@@ -442,6 +457,7 @@ function render() {
   renderGraph();
   renderBacklinkRules();
   bindEvents();
+  applyTheme();
   activateTab("today");
 }
 
