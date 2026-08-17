@@ -214,3 +214,5 @@ const JOB_FEED_DATA = {
     ],
   },
 };
+
+globalThis.JOB_FEED_DATA = JOB_FEED_DATA;

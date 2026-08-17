@@ -31,6 +31,14 @@ Natural upkeep loop:
 - Wiki links are relative from this mockup directory to `../../../wiki`.
 - Parsed wiki/API data must be escaped or rendered through DOM APIs before production integration.
 
+## Validation
+
+Run the data-contract check before promoting parsed wiki data into the UI:
+
+```sh
+/home/mahlerkohen/.bun/bin/bun mockups/job-feed/validate-job-feed-data.js
+```
+
 ## Staged PR Proposal
 
 1. `PR 1: Static visual tracker mockup`
